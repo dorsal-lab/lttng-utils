@@ -106,3 +106,19 @@ Then you can run the trace recording script with the profile like this:
 ```
 $ lttng-record-trace -p myprofile
 ```
+
+### Tracing on remote target
+With the following command line options lttng-record-trace can be used to interface a lttng session on a remote target.
+This is especially useful for embedded targets, where stuff like python might not be installed.
+And even if python is available, feature-rich frontends like [Trace Compass](https://eclipse.dev/tracecompass/) might not be available at all.
+The following options allow to specify an ssh connection to the target:
+
+```
+  --remote REMOTE        Remote target for tracing, use user@target
+  --port PORT            Remote target port
+  --password PASSWORD    Password for remote target connection
+  --private-key PRIV_KEY Private ssh key for remote target connection
+```
+
+When specifying a password, the tool [sshpass](https://linux.die.net/man/1/sshpass) needs to be present in your runtime environment.
+After the trace has been recorded, all trace files are downloaded via scp to the specified output folder and cleaned from the target afterwards.

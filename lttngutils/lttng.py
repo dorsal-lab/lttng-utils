@@ -31,8 +31,13 @@ __all__ = ["check_sessiond", "check_kernel_tracer", "check_ust_tracer"]
 # the lttng command
 LTTNG="lttng"
 
-def check_sessiond():
-    retcode = subprocess.call([LTTNG, "list"], stdout=open(os.devnull, 'wb'), stderr=open(os.devnull, 'wb'))
+def check_sessiond(remote=None):
+    cmd = [LTTNG, "list"]
+
+    if (remote != None):
+        cmd = remote.split() + cmd
+
+    retcode = subprocess.call(cmd, stdout=open(os.devnull, 'wb'), stderr=open(os.devnull, 'wb'))
     logging.debug("exit: " + str(retcode))
 
     if (retcode != 0):
@@ -66,8 +71,13 @@ def check_sessiond():
         return False
     return True
 
-def check_kernel_tracer():
-    retcode = subprocess.call([LTTNG, "list", "-k"], stdout=open(os.devnull, 'wb'), stderr=open(os.devnull, 'wb'))
+def check_kernel_tracer(remote=None):
+    cmd = [LTTNG, "list", "-k"]
+
+    if (remote != None):
+        cmd = remote.split() + cmd
+
+    retcode = subprocess.call(cmd, stdout=open(os.devnull, 'wb'), stderr=open(os.devnull, 'wb'))
     logging.debug("exit: " + str(retcode))
 
     if (retcode != 0):
@@ -82,8 +92,13 @@ def check_kernel_tracer():
         return False
     return True
 
-def check_ust_tracer():
-    retcode = subprocess.call([LTTNG, "list", "-u"], stdout=open(os.devnull, 'wb'), stderr=open(os.devnull, 'wb'))
+def check_ust_tracer(remote=None):
+    cmd = [LTTNG, "list", "-u"]
+
+    if (remote != None):
+        cmd = remote.split() + cmd
+
+    retcode = subprocess.call(cmd, stdout=open(os.devnull, 'wb'), stderr=open(os.devnull, 'wb'))
     logging.debug("exit: " + str(retcode))
 
     if (retcode != 0):
