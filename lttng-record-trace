@@ -59,6 +59,7 @@ trace_running = True
 current = ""
 original_sigint = signal.getsignal(signal.SIGINT)
 lttngProfiles = profile.Profile()
+remote_out_path = "/tmp"
 
 default_profile = "kernel"
 evlist_search_path = [ os.path.join(os.getcwd(), "profiles/"),
@@ -66,9 +67,14 @@ evlist_search_path = [ os.path.join(os.getcwd(), "profiles/"),
                        "/usr/local/share/lttng-utils/profiles/",
                        "/usr/share/lttng-utils/profiles/" ]
 
+ssh_cmd = None
+scp_cmd = None
+
 def cmd_stub(cmds, check, cmd_env=None, with_shell=False):
     if cmd_env is None:
         cmd_env = os.environ
+    if (options.remote != None):
+        cmds = ssh_cmd.split() + cmds
     logging.debug("LD_PRELOAD=" + cmd_env.get("LD_PRELOAD", ""))
     logging.debug("exec: " + " ".join(cmds))
     retcode = 0
@@ -119,16 +125,21 @@ def do_trace(cmd, session, options):
         return
     if (profile["kernel"] or options.enable_all_events):
         # Check that the kernel tracer is available
-        if (lttng.check_kernel_tracer() == False):
+        if (lttng.check_kernel_tracer(ssh_cmd) == False):
             sys.exit(1)
         session += "-k"
     if (profile["ust"] or profile["jul"] or options.enable_all_events):
         # Check that the userspace tracer is available
-        if (lttng.check_ust_tracer() == False):
+        if (lttng.check_ust_tracer(ssh_cmd) == False):
             sys.exit(1)
         session += "-u"
     session += "-" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    out = join(options.output, session)
+    out_local = join(options.output, session)
+    out_remote = join(remote_out_path, session)
+    if (options.remote != None):
+        out = out_remote
+    else:
+        out = out_local
     # generate random uuid
     current = session
 
@@ -203,8 +214,15 @@ def do_trace(cmd, session, options):
 
     # Step 6: Print trace path
     if not options.dry_run:
+        if (options.remote != None):
+            subprocess.call(["mkdir", "-p", out_local], stdout=log_stream, stderr=log_stream, env=cmd_env)
+            print("Downloading trace files from remote target")
+            copy_cmd = f"{scp_cmd}:{out_remote}/* {out_local}/".split()
+            subprocess.call(copy_cmd, stdout=log_stream, stderr=log_stream, env=cmd_env)
+            print("Removing trace files from remote target")
+            cmd_stub(["rm", "-rf", out_remote], False, cmd_env)
         print("")
-        print("The trace is available for analysis at " + out)
+        print("The trace is available for analysis at " + out_local)
 
 if __name__=="__main__":
     # default directory for traces
@@ -220,6 +238,10 @@ if __name__=="__main__":
     parser.add_argument("-a", "--all", dest="enable_all_events", default=False, action="store_true", help="Enable all events. This option has precedence over the selected profile")
     parser.add_argument("-n", "--dry-run", dest="dry_run", default=False, action="store_true", help="Outputs the commands without executing them. The output can be copied to a script and run")
     parser.add_argument("--stateless", dest="stateless", default=False, action="store_true", help="Enable pid/tid/procname context for stateless trace processing")
+    parser.add_argument("--remote", dest="remote", default=None, help="Remote target for tracing, use user@target")
+    parser.add_argument("--port", dest="port", default="22", help="Remote target port")
+    parser.add_argument("--password", dest="password", default=None, help="Password for remote target connection")
+    parser.add_argument("--private-key", dest="priv_key", default=None, help="Private ssh key for remote target connection")
     parser.add_argument("--name", dest="name", metavar="NAME", default=None, help="trace output name (default to command name with k/u suffix)")
     parser.add_argument('--verbose', '-v', action='count', dest="verbose", help="Verbose mode. The number of -v will increase verbosity of logging.")
     parser.add_argument('command', nargs=argparse.REMAINDER, help="The command to trace. It will be executed after the trace has started and the trace will terminate after its execution.")
@@ -234,6 +256,19 @@ if __name__=="__main__":
         lttngProfiles.print_profiles_detail(options.list_profile.split(","))
         sys.exit(0)
 
+    if (options.remote != None):
+        ssh_common_opts = f"-p {options.port} {options.remote}"
+        scp_common_opts = f"-P {options.port} -r {options.remote}"
+        if (options.priv_key == None):
+            if (options.password == None):
+                ssh_cmd = f"ssh {ssh_common_opts}"
+                scp_cmd = f"scp {scp_common_opts}"
+            else:
+                ssh_cmd = f"sshpass -p {options.password} ssh {ssh_common_opts}"
+                scp_cmd = f"sshpass -p {options.password} scp {scp_common_opts}"
+        else:
+                ssh_cmd = f"ssh -o \"IdentitiesOnly=yes\" -i {options.priv_key} {ssh_common_opts}"
+                scp_cmd = f"scp -i {options.priv_key} {scp_common_opts}"
     # try to create base directory if it doesn't exists
     if not os.path.exists(options.output):
         os.makedirs(options.output)
@@ -250,7 +285,7 @@ if __name__=="__main__":
 
     if (dry_run == False):
         # Check that a session daemon is running
-        if (lttng.check_sessiond() == False):
+        if (lttng.check_sessiond(ssh_cmd) == False):
             sys.exit(1)
 
     logger = logging.getLogger()
