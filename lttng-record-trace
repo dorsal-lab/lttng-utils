@@ -135,9 +135,8 @@ def do_trace(cmd, session, options):
         session += "-u"
     session += "-" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     out_local = join(options.output, session)
-    out_remote = join(remote_out_path, session)
     if (options.remote != None):
-        out = out_remote
+        out = options.remote_folder
     else:
         out = out_local
     # generate random uuid
@@ -217,10 +216,10 @@ def do_trace(cmd, session, options):
         if (options.remote != None):
             subprocess.call(["mkdir", "-p", out_local], stdout=log_stream, stderr=log_stream, env=cmd_env)
             print("Downloading trace files from remote target")
-            copy_cmd = f"{scp_cmd}:{out_remote}/* {out_local}/".split()
+            copy_cmd = f"{scp_cmd}:{out}/* {out_local}/".split()
             subprocess.call(copy_cmd, stdout=log_stream, stderr=log_stream, env=cmd_env)
             print("Removing trace files from remote target")
-            cmd_stub(["rm", "-rf", out_remote], False, cmd_env)
+            cmd_stub(["rm", "-rf", out], False, cmd_env)
         print("")
         print("The trace is available for analysis at " + out_local)
 
@@ -242,6 +241,7 @@ if __name__=="__main__":
     parser.add_argument("--port", dest="port", default="22", help="Remote target port")
     parser.add_argument("--password", dest="password", default=None, help="Password for remote target connection")
     parser.add_argument("--private-key", dest="priv_key", default=None, help="Private ssh key for remote target connection")
+    parser.add_argument("--remote-folder", dest="remote_folder", default="/tmp/tracing", help="Temporary folder on remote target to store trace data. Default is /tmp/tracing")
     parser.add_argument("--name", dest="name", metavar="NAME", default=None, help="trace output name (default to command name with k/u suffix)")
     parser.add_argument('--verbose', '-v', action='count', dest="verbose", help="Verbose mode. The number of -v will increase verbosity of logging.")
     parser.add_argument('command', nargs=argparse.REMAINDER, help="The command to trace. It will be executed after the trace has started and the trace will terminate after its execution.")
@@ -257,7 +257,7 @@ if __name__=="__main__":
         sys.exit(0)
 
     if (options.remote != None):
-        ssh_common_opts = f"-p {options.port} {options.remote}"
+        ssh_common_opts = f"-t -p {options.port} {options.remote}"
         scp_common_opts = f"-P {options.port} -r {options.remote}"
         if (options.priv_key == None):
             if (options.password == None):
