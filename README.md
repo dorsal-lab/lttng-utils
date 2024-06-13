@@ -114,10 +114,11 @@ And even if python is available, feature-rich frontends like [Trace Compass](htt
 The following options allow to specify an ssh connection to the target:
 
 ```
-  --remote REMOTE        Remote target for tracing, use user@target
-  --port PORT            Remote target port
-  --password PASSWORD    Password for remote target connection
-  --private-key PRIV_KEY Private ssh key for remote target connection
+  --remote REMOTE                Remote target for tracing, use user@target
+  --port PORT                    Remote target port
+  --password PASSWORD            Password for remote target connection
+  --private-key PRIV_KEY         Private ssh key for remote target connection
+  --remote-folder REMOTE_FOLDER  Temporary folder on remote target to store trace data. Default is /tmp/tracing
 ```
 
 When specifying a password, the tool [sshpass](https://linux.die.net/man/1/sshpass) needs to be present in your runtime environment.
