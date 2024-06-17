@@ -60,6 +60,9 @@ current = ""
 original_sigint = signal.getsignal(signal.SIGINT)
 lttngProfiles = profile.Profile()
 remote_out_path = "/tmp"
+remote_out_path_cleanup_ignore_array = [
+    "/"
+]
 
 default_profile = "kernel"
 evlist_search_path = [ os.path.join(os.getcwd(), "profiles/"),
@@ -218,8 +221,12 @@ def do_trace(cmd, session, options):
             print("Downloading trace files from remote target")
             copy_cmd = f"{scp_cmd}:{out}/* {out_local}/".split()
             subprocess.call(copy_cmd, stdout=log_stream, stderr=log_stream, env=cmd_env)
-            print("Removing trace files from remote target")
-            cmd_stub(["rm", "-rf", out], False, cmd_env)
+            if options.remote_cleanup:
+                if out in remote_out_path_cleanup_ignore_array:
+                    print(f"Temporary output folder \"{out}\" found in ignore list, skipping cleanup!")
+                else:
+                    print("Removing trace files from remote target")
+                    cmd_stub(["rm", "-r", out], False, cmd_env)
         print("")
         print("The trace is available for analysis at " + out_local)
 
@@ -242,6 +249,7 @@ if __name__=="__main__":
     parser.add_argument("--password", dest="password", default=None, help="Password for remote target connection")
     parser.add_argument("--private-key", dest="priv_key", default=None, help="Private ssh key for remote target connection")
     parser.add_argument("--remote-folder", dest="remote_folder", default="/tmp/tracing", help="Temporary folder on remote target to store trace data. Default is /tmp/tracing")
+    parser.add_argument("--remote-cleanup", dest="remote_cleanup", default=False, action="store_true", help="Remove temporary folder on remote target after tracing is complete")
     parser.add_argument("--name", dest="name", metavar="NAME", default=None, help="trace output name (default to command name with k/u suffix)")
     parser.add_argument('--verbose', '-v', action='count', dest="verbose", help="Verbose mode. The number of -v will increase verbosity of logging.")
     parser.add_argument('command', nargs=argparse.REMAINDER, help="The command to trace. It will be executed after the trace has started and the trace will terminate after its execution.")

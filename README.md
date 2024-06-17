@@ -119,6 +119,7 @@ The following options allow to specify an ssh connection to the target:
   --password PASSWORD            Password for remote target connection
   --private-key PRIV_KEY         Private ssh key for remote target connection
   --remote-folder REMOTE_FOLDER  Temporary folder on remote target to store trace data. Default is /tmp/tracing
+  --remote-cleanup               Remove temporary folder on remote target after tracing is complete
 ```
 
 When specifying a password, the tool [sshpass](https://linux.die.net/man/1/sshpass) needs to be present in your runtime environment.
